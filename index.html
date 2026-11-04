@@ -117,4 +117,105 @@ function delRetur(id){retur=retur.filter(x=>x.id!=id);saveAll();render();}
 function saveBayar(){let tokoId=parseInt(document.getElementById('bayar-toko').value);let jumlah=parseInt(document.getElementById('bayar-jumlah').value);let tgl=document.getElementById('bayar-tgl').value||new Date().toISOString().split('T')[0];if(!jumlah) return alert('Jumlah wajib');bayar.unshift({id:Date.now(),tokoId,jumlah,tgl});saveAll();render();}
 function delBayar(id){bayar=bayar.filter(x=>x.id!=id);saveAll();render();}
 
-function cetakNotaToko(tokoId,tgl){
+function cetakNotaToko(tokoId,tgl){document.getElementById('nota-toko').value=tokoId;document.getElementById('nota-tgl').value=tgl;tab('nota');buatNota();}
+
+function buatNota(){
+  let tokoId=parseInt(document.getElementById('nota-toko').value);let tgl=document.getElementById('nota-tgl').value||new Date().toISOString().split('T')[0];
+  let tk=toko.find(x=>x.id==tokoId);if(!tk) return alert('Pilih toko');
+  let list=titip.filter(m=>m.tokoId==tokoId&&m.tgl==tgl);
+  if(list.length==0) return alert('Tidak ada titipan ke '+tk.nama+' pada tanggal '+tgl);
+  let totalQty=list.reduce((a,b)=>a+b.qty,0);let totalNilai=list.reduce((a,b)=>{let pr=produk.find(x=>x.id==b.produkId);return a+b.qty*(pr?.titip||0)},0);
+  let html=`
+    <div style="font-family:monospace;border:2px solid black;padding:20px;max-width:600px;margin:auto;background:white">
+      <center><b>NOTA TITIPAN PRODUK</b><br>No: NT-${Date.now().toString().slice(-6)}<br>${tgl}<br><br></center>
+      <b>DARI (Penitip):</b><br>182kopi - Pekanbaru<br>WA 082366214931<br><br>
+      <b>KE (Toko):</b><br>${tk.nama}<br>${tk.alamat}<br>Pemilik: ${tk.pemilik} | WA: ${tk.wa}<br><br>
+      <table border="1" style="width:100%;border-collapse:collapse;font-size:12px">
+        <tr><th>No</th><th>Produk</th><th>Qty</th><th>Harga Titip</th><th>Subtotal</th></tr>
+        ${list.map((m,i)=>{let pr=produk.find(x=>x.id==m.produkId);return `<tr><td>${i+1}</td><td>${pr?.nama||'-'}<br><small>${pr?.kode||''}</small></td><td>${m.qty}</td><td>Rp ${pr?.titip.toLocaleString()}</td><td>Rp ${(m.qty*(pr?.titip||0)).toLocaleString()}</td></tr>`}).join('')}
+        <tr><td colspan="2"><b>TOTAL</b></td><td><b>${totalQty}</b></td><td></td><td><b>Rp ${totalNilai.toLocaleString()}</b></td></tr>
+      </table>
+      <br><small>Catatan: Barang titip, dibayar setelah laku. Return jika tidak laku / basi max 14 hari.<br>Harga jual di toko: Sesuai label. Toko ambil laba dari selisih harga jual - harga titip.</small><br><br>
+      <div style="display:flex;justify-content:space-between;margin-top:30px">
+        <div><center>Penitip<br><br><br><br> (___________)${tk.pemilik}</center></div>
+        <div><center>Penerima Toko<br><br><br><br> (___________)<br>${tk.pemilik}</center></div>
+      </div>
+      <br><center><small>P-IRT 2153274010234-29 | Produk Asli Pekanbaru</small></center>
+    </div>`;
+  document.getElementById('preview-nota').innerHTML=html;
+}
+
+function downloadNota(){
+  let preview=document.getElementById('preview-nota');if(!preview.innerHTML) return alert('Buat Nota dulu!');
+  let canvas=document.getElementById('canvas-nota');let ctx=canvas.getContext('2d');
+  canvas.width=800;canvas.height=1100;ctx.fillStyle='white';ctx.fillRect(0,0,800,1100);
+  // Simple image render - convert html to canvas manually
+  let tk=toko.find(x=>x.id==parseInt(document.getElementById('nota-toko').value));let tgl=document.getElementById('nota-tgl').value;
+  let list=titip.filter(m=>m.tokoId==tk.id&&m.tgl==tgl);
+  ctx.fillStyle='black';ctx.font='bold 20px monospace';ctx.textAlign='center';ctx.fillText('NOTA TITIPAN PRODUK',400,40);
+  ctx.font='12px monospace';ctx.fillText('No: NT-'+Date.now().toString().slice(-6)+' | Tgl: '+tgl,400,60);
+  ctx.textAlign='left';ctx.fillText('KE: '+tk.nama,20,90);ctx.fillText(tk.alamat.substring(0,60),20,110);
+  let y=140;ctx.fillText('No | Produk | Qty | Harga Titip | Subtotal',20,y);y+=20;
+  list.forEach((m,i)=>{let pr=produk.find(x=>x.id==m.produkId);ctx.fillText(`${i+1}. ${pr.nama.substring(0,25)} | ${m.qty} | Rp ${pr.titip.toLocaleString()} | Rp ${(m.qty*pr.titip).toLocaleString()}`,20,y);y+=20;});
+  y+=20;ctx.font='bold 14px monospace';ctx.fillText('TOTAL QTY: '+list.reduce((a,b)=>a+b.qty,0)+' | TOTAL NILAI: Rp '+list.reduce((a,b)=>{let pr=produk.find(x=>x.id==b.produkId);return a+b.qty*pr.titip},0).toLocaleString(),20,y);
+  let img=canvas.toDataURL('image/png');let a=document.createElement('a');a.href=img;a.download='Nota-Titip-'+tk.nama+'-'+tgl+'.png';a.click();
+  alert('Gambar Nota terdownload! Buka Galeri → Print / Kirim WA ke toko');
+}
+
+function buatTagihan(){
+  let tokoId=parseInt(document.getElementById('tagih-toko-select').value);let tgl=document.getElementById('tagih-tgl-select').value||new Date().toISOString().split('T')[0];
+  let tk=toko.find(x=>x.id==tokoId);if(!tk) return alert('Pilih toko');
+  let piutangList=terjual.filter(j=>j.tokoId==tokoId);
+  let totalPiutang=piutangList.reduce((a,b)=>a+b.piutang,0);
+  let totalBayar=bayar.filter(b=>b.tokoId==tokoId).reduce((a,b)=>a+b.jumlah,0);
+  let sisa=totalPiutang-totalBayar;
+  if(sisa<=0) return alert('Toko ini tidak ada piutang!');
+  let html=`
+    <div style="font-family:monospace;border:2px solid #a16207;padding:20px;max-width:600px;margin:auto;background:white">
+      <center><b style="font-size:18px;color:#a16207">SURAT TAGIHAN TITIPAN</b><br>No: TG-${Date.now().toString().slice(-6)}<br>Tgl Tagih: ${tgl}<br><br></center>
+      <b>Kepada Yth:</b><br>${tk.nama}<br>${tk.alamat}<br>Pemilik: ${tk.pemilik} | WA: ${tk.wa}<br><br>
+      <b>Dengan hormat,</b><br>Berikut rincian penjualan produk titipan yang belum dibayar:<br><br>
+      <table border="1" style="width:100%;border-collapse:collapse;font-size:11px">
+        <tr><th>Tgl Jual</th><th>Produk</th><th>Qty</th><th>Harga Titip</th><th>Piutang</th></tr>
+        ${piutangList.map(j=>{let pr=produk.find(x=>x.id==j.produkId);return `<tr><td>${j.tgl}</td><td>${pr?.nama||'-'}</td><td>${j.qty}</td><td>Rp ${pr?.titip.toLocaleString()}</td><td>Rp ${j.piutang.toLocaleString()}</td></tr>`}).join('')}
+        <tr><td colspan="4"><b>Total Piutang</b></td><td><b>Rp ${totalPiutang.toLocaleString()}</b></td></tr>
+        <tr><td colspan="4">Sudah Dibayar</td><td>Rp ${totalBayar.toLocaleString()}</td></tr>
+        <tr style="background:yellow"><td colspan="4"><b>SISA PIUTANG (HARUS DIBAYAR)</b></td><td><b>Rp ${sisa.toLocaleString()}</b></td></tr>
+      </table>
+      <br><b>Mohon segera dibayar ke:</b><br>
+      Rek BRI 107901046166505 a.n Hatta Hasibuan<br><br>
+      <small>Jika sudah bayar, abaikan surat ini. Hubungi WA 082366214931 untuk konfirmasi.<br>Return barang tidak laku max 12Hari setelah titip.</small><br><br>
+      <div style="text-align:right">Hormat kami,<br><br><br>Penitip<br>182kopi</div>
+      <br><center><small>P-IRT 2153274010234-29</small></center>
+    </div>`;
+  document.getElementById('preview-tagihan').innerHTML=html;
+}
+
+function downloadTagihan(){
+  let preview=document.getElementById('preview-tagihan');if(!preview.innerHTML) return alert('Buat Tagihan dulu!');
+  let tk=toko.find(x=>x.id==parseInt(document.getElementById('tagih-toko-select').value));
+  let canvas=document.getElementById('canvas-nota');let ctx=canvas.getContext('2d');
+  canvas.width=800;canvas.height=1100;ctx.fillStyle='white';ctx.fillRect(0,0,800,1100);
+  ctx.fillStyle='black';ctx.font='bold 20px monospace';ctx.textAlign='center';ctx.fillText('SURAT TAGIHAN TITIPAN',400,40);
+  ctx.font='12px monospace';ctx.fillText('Toko: '+tk.nama+' | Sisa: Rp '+calcPiutang(tk.id).toLocaleString(),400,65);
+  let y=90;ctx.textAlign='left';
+  let list=terjual.filter(j=>j.tokoId==tk.id);
+  list.forEach(j=>{let pr=produk.find(x=>x.id==j.produkId);ctx.fillText(`${j.tgl} | ${pr.nama.substring(0,20)} | ${j.qty} x Rp ${pr.titip.toLocaleString()} = Rp ${j.piutang.toLocaleString()}`,20,y);y+=18;});
+  y+=20;ctx.font='bold 16px monospace';ctx.fillText('SISA PIUTANG: Rp '+calcPiutang(tk.id).toLocaleString(),20,y);
+  y+=30;ctx.font='12px monospace';ctx.fillText('Bayar ke: BRI 1079 01046166505 a.n Hatta Hasibuan',20,y);
+  let img=canvas.toDataURL('image/png');let a=document.createElement('a');a.href=img;a.download='Tagihan-'+tk.nama+'-'+Date.now()+'.png';a.click();
+  alert('Gambar Tagihan terdownload! Kirim WA ke toko');
+}
+
+function kirimWATagihan(){
+  let tokoId=parseInt(document.getElementById('tagih-toko-select').value);let tk=toko.find(x=>x.id==tokoId);if(!tk) return alert('Pilih toko');
+  let sisa=calcPiutang(tokoId);if(sisa<=0) return alert('Tidak ada piutang');
+  let pesan=`*SURAT TAGIHAN TITIPAN*%0A%0AKepada: ${tk.nama}%0AAlamat: ${tk.alamat}%0A%0ARincian penjualan titipan belum dibayar:%0A${terjual.filter(j=>j.tokoId==tokoId).map(j=>{let pr=produk.find(x=>x.id==j.produkId);return `${j.tgl} - ${pr?.nama} x${j.qty} = Rp ${j.piutang.toLocaleString()}`}).join('%0A')}%0A%0A*Total Piutang: Rp ${terjual.filter(j=>j.tokoId==tokoId).reduce((a,b)=>a+b.piutang,0).toLocaleString()}*%0A*Sudah Bayar: Rp ${bayar.filter(b=>b.tokoId==tokoId).reduce((a,b)=>a+b.jumlah,0).toLocaleString()}*%0A*SISA HARUS DIBAYAR: Rp ${sisa.toLocaleString()}*%0A%0AMohon transfer ke BRI 107901046166505 a.n Hatta Hasibuan%0ATerima kasih 🙏%0A%0AP-IRT 2153274010234-29`;
+  window.open('https://wa.me/6282366214931'+tk.wa.replace(/[^0-9]/g,'')+'?text='+pesan,'_blank');
+}
+
+render();
+document.getElementById('titip-tgl').valueAsDate=new Date();document.getElementById('jual-tgl').valueAsDate=new Date();document.getElementById('retur-tgl').valueAsDate=new Date();document.getElementById('nota-tgl').valueAsDate=new Date();document.getElementById('tagih-tgl-select').valueAsDate=new Date();document.getElementById('bayar-tgl').valueAsDate=new Date();
+</script>
+</body>
+</html>
