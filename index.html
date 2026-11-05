@@ -121,13 +121,13 @@ function cetakNotaToko(tokoId,tgl){document.getElementById('nota-toko').value=to
 
 function buatNota(){
   let tokoId=parseInt(document.getElementById('nota-toko').value);let tgl=document.getElementById('nota-tgl').value||new Date().toISOString().split('T')[0];
-  let tk=toko.find(x=>x.id==tokoId);if(!tk) return alert('Pilih toko');
+  let tk=toko.find(x=>x.id==tokoId
+    <div style="font-family:monospace;border:2px solid black;padding:20px;max-width:600px;margin:auto;background:white">
+      <center><b>NOTA TITIPAN PRODUK</b><br>No: NT-${Date.now().toString().slice);if(!tk) return alert('Pilih toko');
   let list=titip.filter(m=>m.tokoId==tokoId&&m.tgl==tgl);
   if(list.length==0) return alert('Tidak ada titipan ke '+tk.nama+' pada tanggal '+tgl);
   let totalQty=list.reduce((a,b)=>a+b.qty,0);let totalNilai=list.reduce((a,b)=>{let pr=produk.find(x=>x.id==b.produkId);return a+b.qty*(pr?.titip||0)},0);
-  let html=`
-    <div style="font-family:monospace;border:2px solid black;padding:20px;max-width:600px;margin:auto;background:white">
-      <center><b>NOTA TITIPAN PRODUK</b><br>No: NT-${Date.now().toString().slice(-6)}<br>${tgl}<br><br></center>
+  let html=`(-6)}<br>${tgl}<br><br></center>
       <b>DARI (Penitip):</b><br>182kopi - Pekanbaru<br>WA 082366214931<br><br>
       <b>KE (Toko):</b><br>${tk.nama}<br>${tk.alamat}<br>Pemilik: ${tk.pemilik} | WA: ${tk.wa}<br><br>
       <table border="1" style="width:100%;border-collapse:collapse;font-size:12px">
@@ -137,8 +137,8 @@ function buatNota(){
       </table>
       <br><small>Catatan: Barang titip, dibayar setelah laku. Return jika tidak laku / basi max 14 hari.<br>Harga jual di toko: Sesuai label. Toko ambil laba dari selisih harga jual - harga titip.</small><br><br>
       <div style="display:flex;justify-content:space-between;margin-top:30px">
-        <div><center>Penitip<br><br><br><br> (___________)${tk.pemilik}</center></div>
-        <div><center>Penerima Toko<br><br><br><br> (___________)<br>${tk.pemilik}</center></div>
+        <div><center>Penitip<br><br><br><br> (___________)<br>${tk.pemilik}</center></div>
+        <div><center>Penerima Toko<br><br><br><br> (___________)<br>${tk.toko}</center></div>
       </div>
       <br><center><small>P-IRT 2153274010234-29 | Produk Asli Pekanbaru</small></center>
     </div>`;
